@@ -2,12 +2,12 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const session = require("express-session");
-const fetch = require("node-fetch"); // FIX fetch
+const fetch = require("node-fetch");
 require("dotenv").config();
 
 const app = express();
 
-// ✅ CORS FIX
+// ✅ CORS
 app.use(cors({
   origin: [
     "http://localhost:3000",
@@ -19,7 +19,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ SESSION FIX (quan trọng)
+// ✅ SESSION
 app.use(session({
   secret: process.env.SESSION_SECRET || "demo_secret_2026",
   resave: false,
@@ -31,6 +31,7 @@ app.use(session({
   }
 }));
 
+// ✅ Static files
 app.use(express.static("public"));
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
@@ -65,17 +66,9 @@ async function getGoogleGeminiAnswer(message) {
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Không có phản hồi";
 }
 
-// ✅ Auth
-function isAuthenticated(req, res) {
-  if (!req.session?.user) {
-    res.status(401).json({ error: "Chưa đăng nhập" });
-    return false;
-  }
-  return true;
-}
-
 // ================= ROUTES =================
 
+// ✅ Session routes
 app.get("/session", (req, res) => {
   res.json({ user: req.session.user || null });
 });
@@ -90,10 +83,8 @@ app.post("/logout", (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
-// ✅ CHAT STREAM
+// ✅ CHAT STREAM (không cần login)
 app.post("/chat-stream", async (req, res) => {
-  if (!isAuthenticated(req, res)) return;
-
   const { message } = req.body;
 
   try {
@@ -105,7 +96,7 @@ app.post("/chat-stream", async (req, res) => {
     res.end();
 
     await new Chat({
-      user: req.session.user,
+      user: req.session?.user || "guest",
       message,
       response: answer
     }).save();
@@ -115,16 +106,14 @@ app.post("/chat-stream", async (req, res) => {
   }
 });
 
-// ✅ HISTORY
+// ✅ HISTORY (cho phép xem luôn)
 app.get("/chats", async (req, res) => {
-  if (!isAuthenticated(req, res)) return;
-  const data = await Chat.find({ user: req.session.user });
+  const data = await Chat.find({ user: req.session?.user || "guest" });
   res.json(data);
 });
 
 app.delete("/chats", async (req, res) => {
-  if (!isAuthenticated(req, res)) return;
-  await Chat.deleteMany({ user: req.session.user });
+  await Chat.deleteMany({ user: req.session?.user || "guest" });
   res.json({ success: true });
 });
 
