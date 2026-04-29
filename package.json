@@ -2,11 +2,8 @@
   "name": "demo",
   "version": "1.0.0",
   "description": "",
-<<<<<<< HEAD
   "main": "server.js",
-=======
  "main": "server.js",
->>>>>>> 0eb1519914e6f6859d4f9faf597728f9a4d49dbc
   "scripts": {
     "start": "node server.js"
   },
