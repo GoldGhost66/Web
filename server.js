@@ -11,7 +11,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://your-frontend.vercel.app" // 👉 thay bằng link Vercel của bạn
+    "https://web-ai-qdr5.onrender.com" // hoặc link Vercel nếu có frontend riêng
   ],
   credentials: true
 }));
@@ -68,21 +68,6 @@ async function getGoogleGeminiAnswer(message) {
 
 // ================= ROUTES =================
 
-// ✅ Session routes
-app.get("/session", (req, res) => {
-  res.json({ user: req.session.user || null });
-});
-
-app.post("/login", (req, res) => {
-  const { username } = req.body;
-  req.session.user = username;
-  res.json({ user: username });
-});
-
-app.post("/logout", (req, res) => {
-  req.session.destroy(() => res.json({ success: true }));
-});
-
 // ✅ CHAT STREAM (không cần login)
 app.post("/chat-stream", async (req, res) => {
   const { message } = req.body;
@@ -106,7 +91,7 @@ app.post("/chat-stream", async (req, res) => {
   }
 });
 
-// ✅ HISTORY (cho phép xem luôn)
+// ✅ HISTORY
 app.get("/chats", async (req, res) => {
   const data = await Chat.find({ user: req.session?.user || "guest" });
   res.json(data);
