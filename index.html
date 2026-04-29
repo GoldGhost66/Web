@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatbot AI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="app">
+    <section class="app__hero">
+      <h1>Chatbot AI</h1>
+      <p>Chat thông minh với AI</p>
+    </section>
+
+    <section class="chatcard">
+      <div class="chatcard__status">
+        <span id="status">Đang kết nối...</span>
+      </div>
+
+      <div id="chat" class="chat-window"></div>
+
+      <div class="input-bar">
+        <input id="msg" placeholder="Nhập tin nhắn..." />
+        <button id="sendBtn">Gửi</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="loginModal" class="login-modal">
+    <div class="login-card">
+      <h2>Đăng nhập</h2>
+      <input id="loginName" placeholder="Tên của bạn" />
+      <button id="loginBtn">OK</button>
+    </div>
+  </div>
+
+<script>
+const apiBase = "https://Web.onrender.com"; // 🔥 sửa link
+
+const chatDiv = document.getElementById("chat");
+const msgInput = document.getElementById("msg");
+const statusEl = document.getElementById("status");
+
+function setStatus(t){ statusEl.innerText = t; }
+
+function addMsg(text, sender){
+  const wrapper = document.createElement("div");
+  wrapper.className = "message " + sender;
+
+  const bubble = document.createElement("div");
+  bubble.className = "message__bubble";
+  bubble.innerText = text;
+
+  wrapper.appendChild(bubble);
+  chatDiv.appendChild(wrapper);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+// SESSION
+async function checkSession(){
+  const res = await fetch(apiBase + "/session", { credentials:"include" });
+  const data = await res.json();
+
+  if(data.user){
+    document.getElementById("loginModal").classList.add("hidden");
+    loadHistory();
+    setStatus("Đã kết nối");
+  } else {
+    document.getElementById("loginModal").classList.remove("hidden");
+  }
+}
+
+// LOGIN
+document.getElementById("loginBtn").onclick = async () => {
+  const name = document.getElementById("loginName").value;
+
+  const res = await fetch(apiBase + "/login",{
+    method:"POST",
+    credentials:"include",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ username:name })
+  });
+
+  const data = await res.json();
+
+  if(data.user){
+    document.getElementById("loginModal").classList.add("hidden");
+    loadHistory();
+  }
+};
+
+// HISTORY
+async function loadHistory(){
+  const res = await fetch(apiBase + "/chats", { credentials:"include" });
+  const chats = await res.json();
+
+  chatDiv.innerHTML="";
+  chats.forEach(c=>{
+    addMsg(c.message,"user");
+    addMsg(c.response,"ai");
+  });
+}
+
+// SEND
+document.getElementById("sendBtn").onclick = sendMsg;
+
+async function sendMsg(){
+  const msg = msgInput.value;
+  if(!msg) return;
+
+  addMsg(msg,"user");
+  msgInput.value="";
+  setStatus("AI đang trả lời...");
+
+  const res = await fetch(apiBase + "/chat-stream",{
+    method:"POST",
+    credentials:"include",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ message: msg })
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let result="";
+
+  while(true){
+    const {done,value} = await reader.read();
+    if(done) break;
+
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
+
+    for(let line of lines){
+      if(line.startsWith("data:")){
+        let data = line.replace("data:","").trim();
+        if(data==="[DONE]") break;
+        result += JSON.parse(data);
+      }
+    }
+  }
+
+  addMsg(result,"ai");
+  setStatus("Xong");
+}
+
+window.onload = checkSession;
+</script>
+</body>
+</html>
